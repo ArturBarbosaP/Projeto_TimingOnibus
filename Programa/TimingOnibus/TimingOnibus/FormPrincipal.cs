@@ -1,3 +1,4 @@
+using System.Drawing.Printing;
 using System.Text.Json;
 using static System.Windows.Forms.LinkLabel;
 
@@ -8,16 +9,23 @@ namespace TimingOnibus
         public FormPrincipal()
         {
             InitializeComponent();
+            InitializeWebView();
         }
 
-        List<Linha> linhas = new();
+        private List<Linha> linhas = new();
+        private List<PontoOnibus> pontosSelecionado = new();
+        private PontoOnibus? pontoMapa = null;
 
-        private async void FormPrincipal_Load(object sender, EventArgs e)
+        private async void InitializeWebView()
+        {
+            await webView21.EnsureCoreWebView2Async(null);
+            webView21.CoreWebView2.AddHostObjectToScript("external", new ScriptInterface(this));
+        }
+
+        private void FormPrincipal_Load(object sender, EventArgs e)
         {
             try
             {
-                await webView21.EnsureCoreWebView2Async(null);
-
                 linhas = CarregarLinhas();
 
                 cbx_linha.AutoCompleteMode = AutoCompleteMode.Suggest;
@@ -48,7 +56,7 @@ namespace TimingOnibus
                 Linha linhaSelecionada = linhas[cbx_linha.SelectedIndex];
                 ltx_log.Items.Add($"Nome da linha: {linhaSelecionada.NomeLinha}, {linhaSelecionada.Descricao}");
 
-                List<PontoOnibus> pontosSelecionado = CarregarPontos(linhaSelecionada);
+                pontosSelecionado = CarregarPontos(linhaSelecionada);
 
                 PontoOnibus primeiroPonto = pontosSelecionado.First();
                 ltx_log.Items.Add($"Primeiro ponto da linha selecionada: {primeiroPonto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {primeiroPonto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
@@ -104,10 +112,10 @@ namespace TimingOnibus
 
             foreach (var p in pontos)
             {
-                markersPontos += $@"L.marker([{p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}], {{icon: iconePonto}}).addTo(map).bindPopup('<b>Ponto de Ônibus</b><br>ID: {p.IdentificadorPonto}<br>Origem: {p.Origem}<br>Sub-linha: {p.NomeSubLinha}');";
+                markersPontos += $@"L.marker([{p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}], {{icon: iconePonto}}).addTo(map).bindPopup('<b>Ponto de Ônibus</b><br>ID: {p.IdentificadorPonto}<br>Origem: {p.Origem}<br>Sub-linha: {p.NomeSubLinha}').on('click', function() {{ chrome.webview.hostObjects.external.SelecionarPonto('{p.IdentificadorPonto}'); }});";
             }
 
-            if (onibus != null && onibus.Count > 0)
+            if (onibus is not null && onibus.Count > 0)
             {
                 foreach (var o in onibus)
                 {
@@ -256,6 +264,24 @@ namespace TimingOnibus
             }
         }
 
+        public void OnPontoSelecionado(string idPonto)
+        {
+            pontoMapa = pontosSelecionado.FirstOrDefault(p => p.IdentificadorPonto == idPonto);
+
+            if (pontoMapa is not null)
+            {
+                MessageBox.Show($"Ponto selecionado!\n" +
+                      $"ID: {pontoMapa.IdentificadorPonto}\n" +
+                      $"Origem: {pontoMapa.Origem}\n" +
+                      $"Lat: {pontoMapa.Latitude}\n" +
+                      $"Lon: {pontoMapa.Longitude}\n\n" +
+                      $"Agora você pode calcular o tempo dos ônibus até este ponto!",
+                      "Ponto Selecionado",
+                      MessageBoxButtons.OK,
+                      MessageBoxIcon.Information);
+            }
+        }
+
         private async Task<List<Onibus>> RequisicaoAPI(string codLinha)
         {
             string url = "https://temporeal.pbh.gov.br/?param=D";
@@ -268,8 +294,7 @@ namespace TimingOnibus
 
                 var onibusLinha = jsonResponse
                     .Where(p => p.NL == codLinha && p.SV != "0")
-                    .GroupBy(p => p.NV)
-                    .Select(p => p.First())
+                    .DistinctBy(p => p.NV)
                     .ToList();
 
                 if (!onibusLinha.Any())
