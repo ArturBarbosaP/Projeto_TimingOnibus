@@ -31,8 +31,8 @@
             lbl_linha = new Label();
             cbx_linha = new ComboBox();
             btn_calcular = new Button();
-            cbx_pontos = new ComboBox();
-            lbl_pontos = new Label();
+            cbx_origem = new ComboBox();
+            lbl_origem = new Label();
             ltx_log = new ListBox();
             webView21 = new Microsoft.Web.WebView2.WinForms.WebView2();
             ((System.ComponentModel.ISupportInitialize)webView21).BeginInit();
@@ -70,24 +70,26 @@
             btn_calcular.UseVisualStyleBackColor = true;
             btn_calcular.Click += btn_calcular_Click;
             // 
-            // cbx_pontos
+            // cbx_origem
             // 
-            cbx_pontos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            cbx_pontos.FormattingEnabled = true;
-            cbx_pontos.Location = new Point(1216, 91);
-            cbx_pontos.Name = "cbx_pontos";
-            cbx_pontos.Size = new Size(321, 23);
-            cbx_pontos.TabIndex = 3;
+            cbx_origem.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cbx_origem.DropDownStyle = ComboBoxStyle.DropDownList;
+            cbx_origem.FormattingEnabled = true;
+            cbx_origem.Location = new Point(1144, 91);
+            cbx_origem.Name = "cbx_origem";
+            cbx_origem.Size = new Size(393, 23);
+            cbx_origem.TabIndex = 3;
+            cbx_origem.SelectedIndexChanged += cbx_origem_SelectedIndexChanged;
             // 
-            // lbl_pontos
+            // lbl_origem
             // 
-            lbl_pontos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
-            lbl_pontos.AutoSize = true;
-            lbl_pontos.Location = new Point(1088, 95);
-            lbl_pontos.Name = "lbl_pontos";
-            lbl_pontos.Size = new Size(109, 15);
-            lbl_pontos.TabIndex = 4;
-            lbl_pontos.Text = "Pontos disponíveis:";
+            lbl_origem.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            lbl_origem.AutoSize = true;
+            lbl_origem.Location = new Point(1088, 95);
+            lbl_origem.Name = "lbl_origem";
+            lbl_origem.Size = new Size(50, 15);
+            lbl_origem.TabIndex = 4;
+            lbl_origem.Text = "Origem:";
             // 
             // ltx_log
             // 
@@ -119,8 +121,8 @@
             ClientSize = new Size(1549, 608);
             Controls.Add(webView21);
             Controls.Add(ltx_log);
-            Controls.Add(lbl_pontos);
-            Controls.Add(cbx_pontos);
+            Controls.Add(lbl_origem);
+            Controls.Add(cbx_origem);
             Controls.Add(btn_calcular);
             Controls.Add(cbx_linha);
             Controls.Add(lbl_linha);
@@ -138,8 +140,8 @@
         private Label lbl_linha;
         private ComboBox cbx_linha;
         private Button btn_calcular;
-        private ComboBox cbx_pontos;
-        private Label lbl_pontos;
+        private ComboBox cbx_origem;
+        private Label lbl_origem;
         private ListBox ltx_log;
         private Microsoft.Web.WebView2.WinForms.WebView2 webView21;
     }

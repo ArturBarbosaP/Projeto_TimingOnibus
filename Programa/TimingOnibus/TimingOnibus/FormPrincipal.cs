@@ -14,6 +14,7 @@ namespace TimingOnibus
 
         private List<Linha> linhas = new();
         private List<PontoOnibus> pontosSelecionado = new();
+        private List<Onibus> onibusLinha = new();
         private PontoOnibus? pontoMapa = null;
 
         private async void InitializeWebView()
@@ -52,6 +53,7 @@ namespace TimingOnibus
                 DescarregarBrowser();
 
                 ltx_log.Items.Clear();
+                cbx_origem.Items.Clear();
 
                 Linha linhaSelecionada = linhas[cbx_linha.SelectedIndex];
                 ltx_log.Items.Add($"Nome da linha: {linhaSelecionada.NomeLinha}, {linhaSelecionada.Descricao}");
@@ -62,18 +64,22 @@ namespace TimingOnibus
                 ltx_log.Items.Add($"Primeiro ponto da linha selecionada: {primeiroPonto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {primeiroPonto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
                 ltx_log.Items.Add($"Google Maps: https://www.google.com/maps?q={primeiroPonto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)},{primeiroPonto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
 
-                cbx_pontos.Items.Clear();
+                ltx_log.Items.Add("Pegando os dados da API");
+                onibusLinha = await RequisicaoAPI(linhaSelecionada.CodigoInterno);
 
-                foreach (var ponto in pontosSelecionado)
+                cbx_origem.Items.Add("TODAS");
+
+                var sentidos = onibusLinha.DistinctBy(o => o.SV).OrderBy(o => o.SV);
+
+                if (sentidos.Count() > 0)
                 {
-                    cbx_pontos.Items.Add($"ID: {ponto.Id} | Coord: {ponto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {ponto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
+                    foreach (var item in sentidos)
+                    {
+                        cbx_origem.Items.Add($"Sentido: {item.SV} | {linhas.FirstOrDefault(l => l.CodigoInterno == item.NL).Descricao.Split('/')[int.Parse(item.SV) - 1]}");
+                    }
                 }
 
-                if (cbx_pontos.Items.Count > 0)
-                    cbx_pontos.SelectedIndex = 0;
-
-                ltx_log.Items.Add("Pegando os dados da API");
-                List<Onibus> onibusLinha = await RequisicaoAPI(linhaSelecionada.CodigoInterno);
+                cbx_origem.SelectedIndex = 0;
 
                 CarregarBrowser(pontosSelecionado, onibusLinha);
             }
@@ -81,6 +87,20 @@ namespace TimingOnibus
             {
                 ltx_log.Items.Add(ex.Message);
                 MessageBox.Show(ex.Message);
+            }
+        }
+
+        private void cbx_origem_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (cbx_origem.SelectedIndex != 0 && cbx_origem.SelectedItem != "TODAS")
+            {
+                var tempPontos = pontosSelecionado;
+                pontosSelecionado = tempPontos.Where(p => Utils.CleanString(p.Origem) == Utils.CleanString(cbx_origem.SelectedItem.ToString().Split('|').Last())).ToList();
+
+                var tempOnibus = onibusLinha;
+                onibusLinha = tempOnibus.Where(o => o.SV == cbx_origem.SelectedItem.ToString().Split('|').First().Replace("Sentido: ", "").Trim()).ToList();
+
+                CarregarBrowser(pontosSelecionado, onibusLinha);
             }
         }
 
@@ -119,7 +139,7 @@ namespace TimingOnibus
             {
                 foreach (var o in onibus)
                 {
-                    markersOnibus += $@"L.marker([{o.LT}, {o.LG}], {{icon: iconeOnibus}}).addTo(map).bindPopup('<b>Ônibus {o.NV}</b><br>Velocidade: {o.VL} km/h<br>Direção: {o.DG}');";
+                    markersOnibus += $@"L.marker([{o.LT}, {o.LG}], {{icon: iconeOnibus}}).addTo(map).bindPopup('<b>Ônibus {o.NV}</b><br>Previsão: {o.PrevisaoTempo}<br>Velocidade: {o.VL} km/h<br>Sentido: {o.SV}');";
                 }
             }
 
@@ -252,8 +272,8 @@ namespace TimingOnibus
 
                 List<PontoOnibus> pontosLinha = pontos
                     .Where(p => p.CodigoLinha == linhaSelecionada.NomeLinha.Split('-').First())
-                    .Where(p => Utils.CleanString(linhaSelecionada.Descricao) != Utils.CleanString(p.NomeLinha) ? 
-                    linhaSelecionada.Descricao == p.NomeSubLinha : 
+                    .Where(p => Utils.CleanString(linhaSelecionada.Descricao) != Utils.CleanString(p.NomeLinha) ?
+                    linhaSelecionada.Descricao == p.NomeSubLinha :
                     p.NomeSubLinha == "PRINCIPAL").ToList();
 
                 return pontosLinha ?? throw new Exception("Nenhum ponto encontrado para a linha selecionada!");
@@ -293,7 +313,7 @@ namespace TimingOnibus
                 ltx_log.Items.Add("Resposta recebida! ");
 
                 var onibusLinha = jsonResponse
-                    .Where(p => p.NL == codLinha && p.SV != "0")
+                    .Where(p => p.NL == codLinha && p.SV != "0" && p.SV != "3")
                     .DistinctBy(p => p.NV)
                     .ToList();
 
@@ -403,5 +423,6 @@ namespace TimingOnibus
         public string DG { get; set; } //Direção do veículo
         public string SV { get; set; } //Sentido do veículo em uma viagem ((1) ida, (2) volta)
         public string DT { get; set; } //Distância percorrida
+        public string PrevisaoTempo = "Sem previsao"; //estimativa do tempo de chegada do ônibus no ponto selecionado
     }
 }

@@ -58,7 +58,7 @@
     [
       12,
       "SV",
-      "Sentido do veículo em uma viagem ((1) ida, (2) volta)"
+      "Sentido do veículo em uma viagem ((1) ida, (2) volta) - Número do Ponto de Controle (PC) de origem em que a viagem foi iniciada. Para viagens normais, podem ser PC 1 ou 2. Para viagens ociosas, PC 0, e viagens de transferência, PC 3." 
     ],
     [
       13,

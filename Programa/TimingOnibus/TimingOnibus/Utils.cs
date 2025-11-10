@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualBasic.Logging;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -11,7 +12,20 @@ namespace TimingOnibus
     {
         public static string CleanString(string str)
         {
-            return new string(str.Where(Char.IsLetterOrDigit).ToArray());
+            string normalized = str.Normalize(NormalizationForm.FormD);
+
+            StringBuilder sb = new();
+
+            foreach (var ch in normalized)
+            {
+                UnicodeCategory unicodeCat = CharUnicodeInfo.GetUnicodeCategory(ch);
+                if (unicodeCat != UnicodeCategory.NonSpacingMark)
+                    sb.Append(ch);
+            }
+
+            string semAcento = sb.ToString().Normalize(NormalizationForm.FormC);
+
+            return new string(semAcento.Where(Char.IsLetterOrDigit).ToArray());
         }
 
         public static (double latitude, double longitude) ConverterUtmParaLatLong(double utmX, double utmY)
