@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic.Logging;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -68,6 +69,30 @@ namespace TimingOnibus
             lat = -Math.Abs(lat);
 
             return (lat, lon);
+        }
+
+        public static string EmptyHTML()
+        {
+            return $@"
+                    <!DOCTYPE html>
+                    <html>
+                    <head>
+                      <meta charset='utf-8'>
+                      <title>Mapa de Ônibus (OpenStreetMap)</title>
+                      <link rel='stylesheet' href='https://unpkg.com/leaflet@1.9.4/dist/leaflet.css' />
+                      <script src='https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'></script>
+                      <style>html,body,#map{{height:100%;margin:0;padding:0}}</style>
+                    </head>
+                    <body>
+                      <div id='map'></div>
+                      <script>
+                        var map = L.map('map');
+                        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+                            attribution: '© OpenStreetMap contributors'
+                        }}).addTo(map);
+                      </script>
+                    </body>
+                    </html>";
         }
     }
 }

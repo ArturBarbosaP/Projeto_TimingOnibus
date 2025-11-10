@@ -41,6 +41,8 @@ namespace TimingOnibus
                 if (cbx_linha.SelectedIndex == -1)
                     return;
 
+                DescarregarBrowser();
+
                 ltx_log.Items.Clear();
 
                 Linha linhaSelecionada = linhas[cbx_linha.SelectedIndex];
@@ -54,8 +56,6 @@ namespace TimingOnibus
 
                 cbx_pontos.Items.Clear();
 
-                CarregarBrowser(pontosSelecionado);
-
                 foreach (var ponto in pontosSelecionado)
                 {
                     cbx_pontos.Items.Add($"ID: {ponto.Id} | Coord: {ponto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {ponto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
@@ -65,7 +65,9 @@ namespace TimingOnibus
                     cbx_pontos.SelectedIndex = 0;
 
                 ltx_log.Items.Add("Pegando os dados da API");
-                await RequisicaoAPI(linhaSelecionada.CodigoInterno);
+                List<Onibus> onibusLinha = await RequisicaoAPI(linhaSelecionada.CodigoInterno);
+
+                CarregarBrowser(pontosSelecionado, onibusLinha);
             }
             catch (Exception ex)
             {
@@ -74,22 +76,48 @@ namespace TimingOnibus
             }
         }
 
-        private void CarregarBrowser(List<PontoOnibus> pontos)
+        private void CarregarBrowser(List<PontoOnibus> pontos, List<Onibus> onibus)
         {
-            string html = GerarHTML(pontos);
+            string html = GerarHTML(pontos, onibus);
             webView21.CoreWebView2.Settings.AreDevToolsEnabled = true;
             webView21.CoreWebView2.Settings.AreHostObjectsAllowed = true;
 
             webView21.NavigateToString(html);
         }
 
-        private string GerarHTML(List<PontoOnibus> pontos)
+        private void DescarregarBrowser()
         {
-            string markers = "";
+            webView21.CoreWebView2.Settings.AreDevToolsEnabled = true;
+            webView21.CoreWebView2.Settings.AreHostObjectsAllowed = true;
+
+            webView21.NavigateToString(Utils.EmptyHTML());
+        }
+
+        private string GerarHTML(List<PontoOnibus> pontos, List<Onibus> onibus)
+        {
+            string iconePontoSVG = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+        @"<svg xmlns='http://www.w3.org/2000/svg' width='25' height='41' viewBox='0 0 25 41'>
+            <path fill='#2196F3' stroke='#fff' stroke-width='2' d='M12.5 0C5.6 0 0 5.6 0 12.5c0 8.5 12.5 28.5 12.5 28.5S25 21 25 12.5C25 5.6 19.4 0 12.5 0z'/>
+            <circle cx='12.5' cy='12.5' r='6' fill='#fff'/>
+        </svg>")); ;
+
+            string iconeOnibusSVG = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(
+        @"<svg xmlns='http://www.w3.org/2000/svg' width='25' height='41' viewBox='0 0 25 41'>
+            <path fill='#F44336' stroke='#fff' stroke-width='2' d='M12.5 0C5.6 0 0 5.6 0 12.5c0 8.5 12.5 28.5 12.5 28.5S25 21 25 12.5C25 5.6 19.4 0 12.5 0z'/>
+            <circle cx='12.5' cy='12.5' r='6' fill='#fff'/>
+        </svg>"));
+
+            string markersPontos = "";
+            string markersOnibus = "";
 
             foreach (var p in pontos)
             {
-                markers += $"L.marker([{p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}]).addTo(map);";
+                markersPontos += $@"L.marker([{p.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {p.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}], {{icon: iconePonto}}).addTo(map).bindPopup('<b>Ponto de^^Onibus</b><br>ID: {p.IdentificadorPonto}<br>Origem: {p.Origem}<br>Sub-linha: {p.NomeSubLinha}');";
+            }
+
+            foreach (var o in onibus)
+            {
+                markersOnibus += $@"L.marker([{o.LT}, {o.LG}], {{icon: iconeOnibus}}).addTo(map).bindPopup('<b>Ônibus {o.NV}</b><br>Velocidade: {o.VL} km/h<br>Direção: {o.DG}');";
             }
 
             string lat = pontos[0].Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -112,7 +140,20 @@ namespace TimingOnibus
                         L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
                             attribution: '© OpenStreetMap contributors'
                         }}).addTo(map);
-                        {markers}
+                        var iconePonto = L.icon({{
+                            iconUrl: 'data:image/svg+xml;base64,{iconePontoSVG}',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34]
+                        }});
+                        var iconeOnibus = L.icon({{
+                            iconUrl: 'data:image/svg+xml;base64,{iconeOnibusSVG}',
+                            iconSize: [25, 41],
+                            iconAnchor: [12, 41],
+                            popupAnchor: [1, -34]
+                        }});
+                        {markersPontos}
+                        {markersOnibus}
                       </script>
                     </body>
                     </html>";
@@ -220,7 +261,7 @@ namespace TimingOnibus
             }
         }
 
-        private async Task RequisicaoAPI(string codLinha)
+        private async Task<List<Onibus>> RequisicaoAPI(string codLinha)
         {
             string url = "https://temporeal.pbh.gov.br/?param=D";
 
@@ -233,7 +274,8 @@ namespace TimingOnibus
                 var onibusLinha = jsonResponse
                     .Where(p => p.NL == codLinha && p.SV != "0")
                     .GroupBy(p => p.NV)
-                    .Select(p => p.First());
+                    .Select(p => p.First())
+                    .ToList();
 
                 if (!onibusLinha.Any())
                     throw new Exception("Nenhum ônibus encontrado!");
@@ -255,6 +297,8 @@ namespace TimingOnibus
                     ltx_log.Items.Add($"Evento: {bus.EV}");
                     ltx_log.Items.Add("");
                 }
+
+                return onibusLinha;
 
             }
             catch (Exception ex)
