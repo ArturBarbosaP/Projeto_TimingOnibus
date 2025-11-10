@@ -40,6 +40,7 @@
             // 
             // lbl_linha
             // 
+            lbl_linha.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             lbl_linha.AutoSize = true;
             lbl_linha.Location = new Point(1088, 9);
             lbl_linha.Name = "lbl_linha";
@@ -49,17 +50,21 @@
             // 
             // cbx_linha
             // 
+            cbx_linha.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            cbx_linha.DropDownHeight = 1;
             cbx_linha.FormattingEnabled = true;
+            cbx_linha.IntegralHeight = false;
             cbx_linha.Location = new Point(1177, 5);
             cbx_linha.Name = "cbx_linha";
-            cbx_linha.Size = new Size(238, 23);
+            cbx_linha.Size = new Size(360, 23);
             cbx_linha.TabIndex = 1;
             // 
             // btn_calcular
             // 
+            btn_calcular.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             btn_calcular.Location = new Point(1091, 42);
             btn_calcular.Name = "btn_calcular";
-            btn_calcular.Size = new Size(324, 35);
+            btn_calcular.Size = new Size(446, 35);
             btn_calcular.TabIndex = 2;
             btn_calcular.Text = "Calcular";
             btn_calcular.UseVisualStyleBackColor = true;
@@ -67,14 +72,16 @@
             // 
             // cbx_pontos
             // 
+            cbx_pontos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             cbx_pontos.FormattingEnabled = true;
             cbx_pontos.Location = new Point(1216, 91);
             cbx_pontos.Name = "cbx_pontos";
-            cbx_pontos.Size = new Size(199, 23);
+            cbx_pontos.Size = new Size(321, 23);
             cbx_pontos.TabIndex = 3;
             // 
             // lbl_pontos
             // 
+            lbl_pontos.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
             lbl_pontos.AutoSize = true;
             lbl_pontos.Location = new Point(1088, 95);
             lbl_pontos.Name = "lbl_pontos";
@@ -84,17 +91,19 @@
             // 
             // ltx_log
             // 
+            ltx_log.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             ltx_log.Font = new Font("Microsoft Sans Serif", 12F);
             ltx_log.FormattingEnabled = true;
             ltx_log.ItemHeight = 20;
             ltx_log.Location = new Point(1091, 119);
             ltx_log.Name = "ltx_log";
-            ltx_log.Size = new Size(324, 484);
+            ltx_log.Size = new Size(446, 484);
             ltx_log.TabIndex = 5;
             // 
             // webView21
             // 
             webView21.AllowExternalDrop = true;
+            webView21.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left;
             webView21.CreationProperties = null;
             webView21.DefaultBackgroundColor = Color.White;
             webView21.Location = new Point(12, 5);
@@ -107,7 +116,7 @@
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1427, 608);
+            ClientSize = new Size(1549, 608);
             Controls.Add(webView21);
             Controls.Add(ltx_log);
             Controls.Add(lbl_pontos);

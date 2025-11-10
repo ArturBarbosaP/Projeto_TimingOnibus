@@ -10,20 +10,43 @@ namespace TimingOnibus
             InitializeComponent();
         }
 
+        List<Linha> linhas = new();
+
+        private async void FormPrincipal_Load(object sender, EventArgs e)
+        {
+            try
+            {
+                await webView21.EnsureCoreWebView2Async(null);
+
+                linhas = CarregarLinhas();
+
+                cbx_linha.AutoCompleteMode = AutoCompleteMode.Suggest;
+                cbx_linha.AutoCompleteSource = AutoCompleteSource.ListItems;
+
+                foreach (var linha in linhas)
+                {
+                    cbx_linha.Items.Add($"{linha.NomeLinha} - {linha.Descricao}");
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Erro no Load do form: " + ex.Message);
+            }
+        }
+
         private async void btn_calcular_Click(object sender, EventArgs e)
         {
             try
             {
-                if (cbx_linha.Text == string.Empty)
+                if (cbx_linha.SelectedIndex == -1)
                     return;
 
                 ltx_log.Items.Clear();
-                string nomeLinha = cbx_linha.Text;
 
-                Linha linhaSelecionada = CarregarLinhas(nomeLinha);
+                Linha linhaSelecionada = linhas[cbx_linha.SelectedIndex];
                 ltx_log.Items.Add($"Nome da linha: {linhaSelecionada.NomeLinha}, {linhaSelecionada.Descricao}");
 
-                List<PontoOnibus> pontosSelecionado = CarregarPontos(nomeLinha.Split('-').First());
+                List<PontoOnibus> pontosSelecionado = CarregarPontos(linhaSelecionada);
 
                 PontoOnibus primeiroPonto = pontosSelecionado.First();
                 ltx_log.Items.Add($"Primeiro ponto da linha selecionada: {primeiroPonto.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {primeiroPonto.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}");
@@ -95,7 +118,7 @@ namespace TimingOnibus
                     </html>";
         }
 
-        private Linha CarregarLinhas(string linha)
+        private List<Linha> CarregarLinhas()
         {
             try
             {
@@ -122,9 +145,7 @@ namespace TimingOnibus
                     });
                 }
 
-                var linhaSelecionada = linhas.FirstOrDefault(l => l.NomeLinha.Equals(linha, StringComparison.OrdinalIgnoreCase));
-
-                return linhaSelecionada ?? throw new Exception("A linha digitada não existe!");
+                return linhas ?? throw new Exception("A linha digitada não existe!");
             }
             catch (Exception ex)
             {
@@ -132,7 +153,7 @@ namespace TimingOnibus
             }
         }
 
-        private List<PontoOnibus> CarregarPontos(string linhaSelecionada)
+        private List<PontoOnibus> CarregarPontos(Linha linhaSelecionada)
         {
             try
             {
@@ -161,7 +182,7 @@ namespace TimingOnibus
                                 double utmX = double.Parse(coordenadas[0], System.Globalization.CultureInfo.InvariantCulture);
                                 double utmY = double.Parse(coordenadas[1], System.Globalization.CultureInfo.InvariantCulture);
 
-                                var (lat, lon) = ConverterUtmParaLatLong(utmX, utmY);
+                                var (lat, lon) = Utils.ConverterUtmParaLatLong(utmX, utmY);
 
                                 pontos.Add(new PontoOnibus
                                 {
@@ -185,7 +206,11 @@ namespace TimingOnibus
                     }
                 }
 
-                List<PontoOnibus> pontosLinha = pontos.Where(p => p.CodigoLinha == linhaSelecionada).ToList();
+                List<PontoOnibus> pontosLinha = pontos
+                    .Where(p => p.CodigoLinha == linhaSelecionada.NomeLinha.Split('-').First())
+                    .Where(p => Utils.CleanString(linhaSelecionada.Descricao) != Utils.CleanString(p.NomeLinha) ? 
+                    linhaSelecionada.Descricao == p.NomeSubLinha : 
+                    p.NomeSubLinha == "PRINCIPAL").ToList();
 
                 return pontosLinha ?? throw new Exception("Nenhum ponto encontrado para a linha selecionada!");
             }
@@ -193,63 +218,6 @@ namespace TimingOnibus
             {
                 throw new Exception("Erro na função CarregarPontos: " + ex.Message);
             }
-        }
-
-        private (double latitude, double longitude) ConverterUtmParaLatLong(double utmX, double utmY)
-        {
-            // Conversão de EPSG:31983 (SIRGAS 2000 / UTM zone 23S) para WGS84
-            // Parâmetros da zona UTM 23S
-            const double a = 6378137.0; // Semi-eixo maior (metros)
-            const double f = 1 / 298.257223563; // Achatamento
-            const double k0 = 0.9996; // Fator de escala
-            const int zone = 23; // Zona UTM
-            const double falseEasting = 500000.0;
-            const double falseNorthing = 10000000.0; // Hemisfério Sul
-
-            double e = Math.Sqrt(2 * f - f * f); // Excentricidade
-            double e2 = e * e;
-            double e4 = e2 * e2;
-            double e6 = e4 * e2;
-
-            // Remover false easting e northing
-            double x = utmX - falseEasting;
-            double y = utmY - falseNorthing;
-
-            // Meridiano central da zona
-            double lon0 = (zone * 6 - 183) * Math.PI / 180.0;
-
-            // Latitude footpoint
-            double M = y / k0;
-            double mu = M / (a * (1 - e2 / 4 - 3 * e4 / 64 - 5 * e6 / 256));
-
-            double e1 = (1 - Math.Sqrt(1 - e2)) / (1 + Math.Sqrt(1 - e2));
-            double phi1 = mu + (3 * e1 / 2 - 27 * e1 * e1 * e1 / 32) * Math.Sin(2 * mu)
-                        + (21 * e1 * e1 / 16 - 55 * e1 * e1 * e1 * e1 / 32) * Math.Sin(4 * mu)
-                        + (151 * e1 * e1 * e1 / 96) * Math.Sin(6 * mu);
-
-            double C1 = e2 * Math.Cos(phi1) * Math.Cos(phi1) / (1 - e2);
-            double T1 = Math.Tan(phi1) * Math.Tan(phi1);
-            double N1 = a / Math.Sqrt(1 - e2 * Math.Sin(phi1) * Math.Sin(phi1));
-            double R1 = a * (1 - e2) / Math.Pow(1 - e2 * Math.Sin(phi1) * Math.Sin(phi1), 1.5);
-            double D = x / (N1 * k0);
-
-            // Latitude
-            double lat = phi1 - (N1 * Math.Tan(phi1) / R1) *
-                        (D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * e2) * D * D * D * D / 24
-                        + (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * e2 - 3 * C1 * C1) * D * D * D * D * D * D / 720);
-
-            // Longitude
-            double lon = lon0 + (D - (1 + 2 * T1 + C1) * D * D * D / 6
-                        + (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * e2 + 24 * T1 * T1) * D * D * D * D * D / 120) / Math.Cos(phi1);
-
-            // Converter para graus
-            lat = lat * 180.0 / Math.PI;
-            lon = lon * 180.0 / Math.PI;
-
-            // Ajuste para hemisfério sul (coordenadas negativas)
-            lat = -Math.Abs(lat);
-
-            return (lat, lon);
         }
 
         private async Task RequisicaoAPI(string codLinha)
@@ -325,11 +293,6 @@ namespace TimingOnibus
             {
                 throw new Exception("Erro na função MakeGET: " + ex.Message);
             }
-        }
-
-        private async void FormPrincipal_Load(object sender, EventArgs e)
-        {
-            await webView21.EnsureCoreWebView2Async(null);
         }
     }
 
